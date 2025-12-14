@@ -143,6 +143,7 @@ class ModelCallHandler:
 
     def load_huggingface_model_4bit(self):
         from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+        import torch
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         nf4_config = BitsAndBytesConfig(
