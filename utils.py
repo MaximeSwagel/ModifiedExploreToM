@@ -146,18 +146,18 @@ class ModelCallHandler:
         import torch
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+
         nf4_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_quant_type="nf4",
             bnb_4bit_use_double_quant=True,
-            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_compute_dtype=torch.float16,
         )
 
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_name,
             quantization_config=nf4_config,
-            attn_implementation="flash_attention_2",
-            cache_dir=cache_dir,
+            device_map="auto",
         )
 
     def call_vllm_python_model(self, message_list, top_p, temperature, **kwargs):
