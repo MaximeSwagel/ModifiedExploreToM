@@ -203,39 +203,54 @@ class ModelCallHandler:
             )
         return generation, tokens_used
 
-    def call_huggingface_local_model(
-        self, message_list, max_tokens, top_p, temperature
-    ):
-        input_ids = self.tokenizer.apply_chat_template(
-            message_list, add_generation_prompt=True, return_tensors="pt"
-        ).to(self.model.device)
-        terminators = [
-            self.tokenizer.eos_token_id,
-            self.tokenizer.convert_tokens_to_ids("<|eot_id|>"),
-        ]
+    def call_huggingface_local_model(self, message_list, max_tokens, top_p, temperature):
+        import torch
 
-        if temperature > 0:
-            outputs = self.model.generate(
-                input_ids,
-                max_new_tokens=max_tokens,
-                eos_token_id=terminators,
-                do_sample=True,
-                temperature=temperature,
-                top_p=top_p,
-                pad_token_id=self.tokenizer.eos_token_id,
+        # Build inputs (chat template if available; else fall back to plain prompt)
+        if hasattr(self.tokenizer, "apply_chat_template") and getattr(self.tokenizer, "chat_template", None):
+            input_ids = self.tokenizer.apply_chat_template(
+                message_list, add_generation_prompt=True, return_tensors="pt"
             )
         else:
-            outputs = self.model.generate(
-                input_ids,
-                max_new_tokens=max_tokens,
-                eos_token_id=terminators,
-                do_sample=False,
-                top_p=top_p,
-                pad_token_id=self.tokenizer.eos_token_id,
-            )
-        response = outputs[0][input_ids.shape[-1] :]
-        decoded_response = self.tokenizer.decode(response, skip_special_tokens=True)
+            prompt = "\n".join([f"{m['role']}: {m['content']}" for m in message_list]) + "\nassistant:"
+            input_ids = self.tokenizer(prompt, return_tensors="pt").input_ids
+
+        # Robust device pick (works even with device_map="auto")
+        device = next(self.model.parameters()).device
+        input_ids = input_ids.to(device)
+
+        # Robust terminators (avoid None / invalid ids)
+        terminators = []
+        if isinstance(self.tokenizer.eos_token_id, int):
+            terminators.append(self.tokenizer.eos_token_id)
+
+        eot_id = self.tokenizer.convert_tokens_to_ids("<|eot_id|>")
+        if isinstance(eot_id, int) and eot_id >= 0:
+            terminators.append(eot_id)
+
+        # If still empty, don't pass a list at all (let HF default)
+        eos_arg = terminators if terminators else None
+
+        gen_kwargs = dict(
+            max_new_tokens=max_tokens,
+            top_p=top_p,
+            pad_token_id=self.tokenizer.eos_token_id,
+        )
+        if eos_arg is not None:
+            gen_kwargs["eos_token_id"] = eos_arg
+
+        if temperature and temperature > 0:
+            gen_kwargs.update(dict(do_sample=True, temperature=temperature))
+        else:
+            gen_kwargs.update(dict(do_sample=False))
+
+        with torch.no_grad():
+            outputs = self.model.generate(input_ids, **gen_kwargs)
+
+        response_ids = outputs[0][input_ids.shape[-1]:]
+        decoded_response = self.tokenizer.decode(response_ids, skip_special_tokens=True)
         return decoded_response, 0
+
 
     def call_model(
         self,
