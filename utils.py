@@ -208,7 +208,7 @@ class ModelCallHandler:
     ):
         input_ids = self.tokenizer.apply_chat_template(
             message_list, add_generation_prompt=True, return_tensors="pt"
-        ).to(model.device)
+        ).to(self.model.device)
         terminators = [
             self.tokenizer.eos_token_id,
             self.tokenizer.convert_tokens_to_ids("<|eot_id|>"),
@@ -231,7 +231,7 @@ class ModelCallHandler:
                 eos_token_id=terminators,
                 do_sample=False,
                 top_p=top_p,
-                pad_token_id=tokenizer.eos_token_id,
+                pad_token_id=self.tokenizer.eos_token_id,
             )
         response = outputs[0][input_ids.shape[-1] :]
         decoded_response = self.tokenizer.decode(response, skip_special_tokens=True)
