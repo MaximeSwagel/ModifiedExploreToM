@@ -96,9 +96,9 @@ Include the itemized questions and do not add any extra text. Answer all items f
         if prompt_output_cache_key in PROMPT_OUTPUT_CACHE:
             model_output = PROMPT_OUTPUT_CACHE[prompt_output_cache_key]
         else:
-            assert (
-                False
-            ), "We should already have this cached for the models used in the paper (comment this otherwise)."
+            # assert (
+            #     False
+            # ), "We should already have this cached for the models used in the paper (comment this otherwise)."
             model_output, tokens_used = self.model_call_handler.call_model(
                 prompt_list_request, **kwargs
             )
