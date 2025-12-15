@@ -194,6 +194,7 @@ Include the itemized questions and do not add any extra text. Answer all items f
                 ],
             )
             if parsed_parts is False:
+                print("Could not parse story context:", sampled_context)
                 continue
 
             # 4. Parse and clean each field
@@ -245,6 +246,7 @@ Include the itemized questions and do not add any extra text. Answer all items f
                 {}, llm_judge_prompt, llm_judge_prompt_expected_answers
             )
             if not output["is_equivalent"]:
+                print("Rejected due to failed reasonability check.")
                 continue
             sample_context_dict["checked_reasonability"] = True
             sample_context_dict_list.append(sample_context_dict)

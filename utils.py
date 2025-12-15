@@ -465,48 +465,106 @@ def _dump_dict_list_to_jsonl(dict_list, filepath):
 """
 
 # used in StoryContextGenerator
-parser_numbered_list = re.compile(r"\d+\.\s")  # Matches the pattern of "number. "
+# More robust: match numbered items at line starts, allow whitespace.
+parser_numbered_list = re.compile(r"(?:^|\n)\s*\d+\.\s+")
 
 
 def _parse_numbered_list(text):
-    return [elem.strip("\n ") for elem in parser_numbered_list.split(text)[1:]]
+    """
+    Robustly parse lists like:
+      1. item
+      2. item
+    Tolerates preamble text, whitespace, and markdown noise.
+    """
+    if text is None:
+        return []
+    text = str(text).replace("\r\n", "\n").replace("\r", "\n").strip()
+
+    # Remove common markdown noise
+    text = text.replace("**", "").replace("__", "").replace("###", "").strip()
+
+    parts = parser_numbered_list.split(text)
+    # parts[0] may be preamble before the first "1. ..."
+    items = [p.strip(" \n\t-") for p in parts[1:]]
+    return [x for x in items if x]
 
 
 # used in StoryContextGenerator
 def _parse_answer_with_separators(text, separators):
+    """
+    Robustly split model output into sections delimited by separators.
+    - Removes <think>...</think>
+    - Tolerates markdown headers like "### LIST ...:"
+    - Splits only on first occurrence of each separator (allows repeats later)
+    """
+    if text is None:
+        return False
+    text = str(text).replace("\r\n", "\n").replace("\r", "\n")
+
+    # Strip <think> blocks (GenPRM-style)
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
+
+    # Strip common markdown noise
+    text = text.replace("**", "").replace("__", "").strip()
+
     result = []
+    remaining = text
+
     for sep, _ in separators:
-        split_text = text.split(sep)
-        if len(split_text) != 2:
-            print("T", text, sep)
+        # Allow optional markdown hashes / whitespace before the separator,
+        # and require it appears at start or after a newline.
+        sep_re = re.compile(rf"(?:^|\n)\s*#*\s*{re.escape(sep)}")
+        m = sep_re.search(remaining)
+        if not m:
+            print("T", remaining, sep)
             return False
-        result.append(split_text[0].strip("\n "))
-        text = split_text[1]
-    result.append(text)
+
+        # Pre-separator text (usually empty/preamble)
+        result.append(remaining[:m.start()].strip("\n "))
+
+        # Advance to text after the separator header
+        remaining = remaining[m.end():].lstrip("\n ")
+
+    result.append(remaining)
 
     return [
-        _parse_numbered_list(parsed_text) if is_numbered_list else parsed_text
+        _parse_numbered_list(parsed_text) if is_numbered_list else parsed_text.strip("\n ")
         for parsed_text, (_, is_numbered_list) in zip(result[1:], separators)
     ]
 
 
 # used in StoryContextGenerator
 def _remove_noun_articles(text):
+    if text is None:
+        return text
+    text = str(text).strip()
     for prefix in ["a ", "an ", "the "]:
         if text.lower().startswith(prefix):
-            text = text[len(prefix) :]
+            text = text[len(prefix):]
     return text
 
 
 # used in ObjectStateUpdatesGenerator
 def _parse_fields(model_response, fields):
+    """
+    More robust field parser:
+    - Removes <think>...</think>
+    - Ignores markdown noise
+    - Allows extra blank lines (still requires fields in order)
+    """
+    if model_response is None:
+        return []
+    model_response = str(model_response).replace("\r\n", "\n").replace("\r", "\n")
+    model_response = re.sub(r"<think>.*?</think>", "", model_response, flags=re.DOTALL | re.IGNORECASE)
+    model_response = model_response.replace("**", "").replace("__", "").replace("###", "").strip()
+
     suggestions = []
     for elem in model_response.split("\n\n"):
-        tmp = elem.split("\n")
-        if len(tmp) != len(fields):
+        lines = [ln.strip() for ln in elem.split("\n") if ln.strip() != ""]
+        if len(lines) != len(fields):
             continue
-        if not all(tmp[i].startswith(k) for i, k in enumerate(fields)):
+        if not all(lines[i].startswith(k) for i, k in enumerate(fields)):
             continue
-        parsed_fields = [tmp[i][len(k) :].strip() for i, k in enumerate(fields)]
+        parsed_fields = [lines[i][len(k):].strip() for i, k in enumerate(fields)]
         suggestions.append(parsed_fields)
     return suggestions
