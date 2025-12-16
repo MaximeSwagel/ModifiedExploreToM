@@ -18,7 +18,7 @@ from utils import (
     _dump_dict_list_to_jsonl,
     _parse_fields,
 )
-from cached_prompt_outputs import PROMPT_OUTPUT_CACHE, append_prompt_cache_entry
+from cached_prompt_outputs import PROMPT_OUTPUT_CACHE
 
 
 class StoryContextGenerator:
@@ -89,7 +89,7 @@ Include the itemized questions and do not add any extra text. Answer all items f
 
     def _sample_list(self, prompt_list_request, **kwargs):
         from cached_prompt_outputs import load_json_cache, save_json_cache, _key_to_json_str
-        
+
         JSON_PROMPT_OUTPUT_CACHE = load_json_cache()
         top_p = kwargs["top_p"]
         temperature = kwargs["temperature"]
