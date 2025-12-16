@@ -97,17 +97,17 @@ Include the itemized questions and do not add any extra text. Answer all items f
 
         json_key = _key_to_json_str(prompt_list_request, top_p, temperature, model_shortname)
 
-        if json_key in JSON_PROMPT_OUTPUT_CACHE:
-            model_output = JSON_PROMPT_OUTPUT_CACHE[json_key]
-        else:
-            model_output, tokens_used = self.model_call_handler.call_model(
-                prompt_list_request, **kwargs
-            )
-            #Saving the generated names and locations for future use
-            with open("raw_list_outputs.json", "w") as f:
-                json.dump(model_output, f)
-            JSON_PROMPT_OUTPUT_CACHE[json_key] = model_output
-            save_json_cache(JSON_PROMPT_OUTPUT_CACHE)
+        # if json_key in JSON_PROMPT_OUTPUT_CACHE:
+        #     model_output = JSON_PROMPT_OUTPUT_CACHE[json_key]
+        # else:
+        model_output, tokens_used = self.model_call_handler.call_model(
+            prompt_list_request, **kwargs
+        )
+        #Saving the generated names and locations for future use
+        with open("raw_list_outputs.json", "w") as f:
+            json.dump(model_output, f)
+        JSON_PROMPT_OUTPUT_CACHE[json_key] = model_output
+        save_json_cache(JSON_PROMPT_OUTPUT_CACHE)
 
         # (small hardening vs split("\n") and split(".") issues)
         return [line.split(".", 1)[-1].strip() for line in model_output.splitlines() if line.strip()]
