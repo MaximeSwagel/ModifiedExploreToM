@@ -25,8 +25,17 @@ def _key_to_json_str(prompt_list_request, top_p, temperature, model_shortname):
 def load_json_cache():
     if not CACHE_PATH.exists():
         return {}
-    with CACHE_PATH.open("r", encoding="utf-8") as f:
-        return json.load(f)
+    
+    text = CACHE_PATH.read_text(encoding="utf-8").strip()
+    if not text:
+        return {}  # empty file
+    
+    try:
+        with CACHE_PATH.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        print("Warning: Could not decode JSON cache file. Starting with empty cache : ", e)
+        raise e
 
 def save_json_cache(cache):
     with CACHE_PATH.open("w", encoding="utf-8") as f:
