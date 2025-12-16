@@ -256,6 +256,10 @@ Include the itemized questions and do not add any extra text. Answer all items f
         self.sample_names_list()
         self.sample_location_list()
 
+        print(self.name_list)
+        print(self.location_list)
+
+
         # 1. Sample simple story contexts
         filepath = self._get_simple_story_contexts_output_filename(
             num_elements_by_class, num_requested_contexts
