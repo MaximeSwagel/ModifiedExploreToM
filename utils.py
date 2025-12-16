@@ -255,7 +255,7 @@ class ModelCallHandler:
     def call_model(
         self,
         prompt,
-        max_tokens=50,
+        max_tokens=500,
         top_p=1.0,
         temperature=1.0,
         system_prompt=None,
