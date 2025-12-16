@@ -103,6 +103,9 @@ Include the itemized questions and do not add any extra text. Answer all items f
             model_output, tokens_used = self.model_call_handler.call_model(
                 prompt_list_request, **kwargs
             )
+            #Saving the generated names and locations for future use
+            with open("raw_list_outputs.json", "w") as f:
+                json.dump(model_output, f)
             JSON_PROMPT_OUTPUT_CACHE[json_key] = model_output
             save_json_cache(JSON_PROMPT_OUTPUT_CACHE)
 
@@ -264,12 +267,6 @@ Include the itemized questions and do not add any extra text. Answer all items f
         #Printing the generated names and locations for reference
         print(self.name_list)
         print(self.location_list)
-
-        #Saving the generated names and locations for future use
-        with open("generated_names.json", "w") as f:
-            json.dump(self.name_list, f)
-        with open("generated_locations.json", "w") as f:
-            json.dump(self.location_list, f)
 
 
         # 1. Sample simple story contexts
