@@ -4,6 +4,35 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import json
+from pathlib import Path
+
+CACHE_PATH = Path("cached_prompt_outputs.json")
+
+def _key_to_json_str(prompt_list_request, top_p, temperature, model_shortname):
+    # stable, JSON-safe, avoids float tuple issues
+    return json.dumps(
+        {
+            "prompt": prompt_list_request,
+            "top_p": float(top_p),
+            "temperature": float(temperature),
+            "model": model_shortname,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+
+def load_json_cache():
+    if not CACHE_PATH.exists():
+        return {}
+    with CACHE_PATH.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_json_cache(cache):
+    with CACHE_PATH.open("w", encoding="utf-8") as f:
+        json.dump(cache, f, ensure_ascii=False, indent=2)
+
+
 # (prompt, params, model) = output
 PROMPT_OUTPUT_CACHE = {
     (

@@ -18,7 +18,7 @@ from utils import (
     _dump_dict_list_to_jsonl,
     _parse_fields,
 )
-from cached_prompt_outputs import PROMPT_OUTPUT_CACHE
+from cached_prompt_outputs import PROMPT_OUTPUT_CACHE, append_prompt_cache_entry
 
 
 class StoryContextGenerator:
@@ -85,24 +85,29 @@ Include the itemized questions and do not add any extra text. Answer all items f
         self.model_call_handler = model_call_handler
         self.model_shortname = self.model_call_handler.model_shortname
 
+
+
     def _sample_list(self, prompt_list_request, **kwargs):
+        from cached_prompt_outputs import load_json_cache, save_json_cache, _key_to_json_str
+        
+        JSON_PROMPT_OUTPUT_CACHE = load_json_cache()
         top_p = kwargs["top_p"]
         temperature = kwargs["temperature"]
-        prompt_output_cache_key = (
-            prompt_list_request,
-            (top_p, temperature),
-            self.model_call_handler.model_shortname,
-        )
-        if prompt_output_cache_key in PROMPT_OUTPUT_CACHE:
-            model_output = PROMPT_OUTPUT_CACHE[prompt_output_cache_key]
+        model_shortname = self.model_call_handler.model_shortname
+
+        json_key = _key_to_json_str(prompt_list_request, top_p, temperature, model_shortname)
+
+        if json_key in JSON_PROMPT_OUTPUT_CACHE:
+            model_output = JSON_PROMPT_OUTPUT_CACHE[json_key]
         else:
-            # assert (
-            #     False
-            # ), "We should already have this cached for the models used in the paper (comment this otherwise)."
             model_output, tokens_used = self.model_call_handler.call_model(
                 prompt_list_request, **kwargs
             )
-        return [e.split(".")[-1].strip() for e in model_output.split("\n")]
+            JSON_PROMPT_OUTPUT_CACHE[json_key] = model_output
+            save_json_cache(JSON_PROMPT_OUTPUT_CACHE)
+
+        # (small hardening vs split("\n") and split(".") issues)
+        return [line.split(".", 1)[-1].strip() for line in model_output.splitlines() if line.strip()]
 
     def _get_simple_story_contexts_output_filename(
         self, num_elements_by_class, num_requested_contexts
@@ -256,8 +261,15 @@ Include the itemized questions and do not add any extra text. Answer all items f
         self.sample_names_list()
         self.sample_location_list()
 
+        #Printing the generated names and locations for reference
         print(self.name_list)
         print(self.location_list)
+
+        #Saving the generated names and locations for future use
+        with open("generated_names.json", "w") as f:
+            json.dump(self.name_list, f)
+        with open("generated_locations.json", "w") as f:
+            json.dump(self.location_list, f)
 
 
         # 1. Sample simple story contexts
