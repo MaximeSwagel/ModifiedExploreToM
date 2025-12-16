@@ -105,6 +105,7 @@ Include the itemized questions and do not add any extra text. Answer all items f
         )
         #Saving the generated names and locations for future use
         with open("raw_list_outputs.json", "w") as f:
+            json.dump(prompt_list_request, f)
             json.dump(model_output, f)
         JSON_PROMPT_OUTPUT_CACHE[json_key] = model_output
         save_json_cache(JSON_PROMPT_OUTPUT_CACHE)
